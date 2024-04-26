@@ -2,6 +2,7 @@ import {
   Alert,
   Modal,
   ScrollView, 
+  Share, 
   StatusBar, 
   Text, 
   TouchableOpacity, 
@@ -15,10 +16,27 @@ import { colors } from "@/styles/colors";
 import { FontAwesome } from "@expo/vector-icons";
 import { useState } from "react";
 import { QRcode } from "@/components/qrcode";
+import { useBadgeStore } from "@/store/badge-store";
+import { Redirect } from "expo-router";
+import { MotiView } from "moti";
+import QRCode from "react-native-qrcode-svg";
 
 export default function Ticket() {
-  const [image, setImage] = useState("")
   const [expandQRCode, setExpandQRCode] = useState(false)
+  const badgeStore = useBadgeStore()
+
+  async function handleShare(){
+    try {
+      if(badgeStore.data?.checkInUrl){
+        await Share.share({
+          message: badgeStore.data.checkInUrl
+        })
+      }
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Compartilhar", "Não foi possivel compartilhar")
+    }
+  }
 
   async function handleSelectImage() {
     try {
@@ -29,7 +47,7 @@ export default function Ticket() {
       })
 
       if (result.assets) {
-        setImage(result.assets[0].uri);
+        badgeStore.updateAvatar(result.assets[0].uri);
       }
     } catch (error) {
       console.error(error);
@@ -37,50 +55,77 @@ export default function Ticket() {
     }
   }
 
+  if (!badgeStore.data?.checkInUrl) {
+    return <Redirect href="/" />
+  }
+
   return (
-    <View className="flex-1 bg-green-500                                                                                                             ">
+    <View className="flex-1 bg-green-500">
       <StatusBar barStyle="light-content" />
       <Header title="Minha Credencial" />
 
-      <ScrollView 
-        className="-mt-28 -z-10" 
+      <ScrollView
+        className="-mt-28 -z-10"
         contentContainerClassName="px-8 pb-8"
         showsVerticalScrollIndicator={false}
       >
-        <Credential 
-          image={image} 
+        <Credential
+          data={badgeStore.data}
           onChangeAvatar={handleSelectImage}
           onExpandQRCode={() => setExpandQRCode(true)}
         />
-        
-        <FontAwesome 
-          name="angle-double-down" 
-          size={24} 
-          color={colors.gray[300]}
-          className="self-center my-6"
-        />
 
-        <Text className="text-white font-bold text-2xl mt-4">Compartilhar credencial</Text>
-        <Text className="text-white font-regular text-base mt-1 mb-6">Mostre ao mundo que voçê vai participar do Unite Summit</Text>
+        <MotiView
+          from={{
+            translateY: 0,
+          }}
+          animate={{
+            translateY: 10,
+          }}
+          transition={{
+            loop: true,
+            type: "timing",
+            duration: 700,
+          }}
+        >
+          <FontAwesome
+            name="angle-double-down"
+            color={colors.gray[300]}
+            size={24}
+            className="self-center my-6"
+          />
+        </MotiView>
 
-        <Button title="Compartilhar"/>
+        <Text className="text-white font-bold text-2xl mt-4">
+          Compartilhar credencial
+        </Text>
+
+        <Text className="text-white font-regular text-base mt-1 mb-6">
+          Mostre ao mundo que você vai participar do evento{" "}
+          {badgeStore.data.eventTitle}!
+        </Text>
+
+        <Button title="Compartilhar" onPress={handleShare} />
 
         <TouchableOpacity
-          activeOpacity={0.7}
           className="mt-10"
+          activeOpacity={0.7}
+          onPress={() => badgeStore.remove()}
         >
-          <Text className="text-base text-white font-bold text-center">Remover Ingresso</Text>
+          <Text className="text-base text-white font-bold text-center">
+            Remover Ingresso
+          </Text>
         </TouchableOpacity>
       </ScrollView>
 
       <Modal visible={expandQRCode} statusBarTranslucent>
         <View className="flex-1 bg-green-500 items-center justify-center">
-          <TouchableOpacity 
+          <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => setExpandQRCode(false)}
           >
-            <QRcode value="teste" size={300} />
-            <Text className="font-body text-orange-500 text-sm text-center mt-10">
+            <QRCode value="teste" size={300} />
+            <Text className="font-body text-orange-500 text-sm mt-10 text-center">
               Fechar QRCode
             </Text>
           </TouchableOpacity>
